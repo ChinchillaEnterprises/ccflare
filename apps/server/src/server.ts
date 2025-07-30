@@ -100,9 +100,13 @@ export default function startServer(options?: {
 
 	const { port = NETWORK.DEFAULT_PORT, withDashboard = true, silent = false } = options || {};
 
-	// Initialize DI container
-	container.registerInstance(SERVICE_KEYS.Config, new Config());
-	container.registerInstance(SERVICE_KEYS.Logger, new Logger("Server"));
+	// Initialize DI container (only if not already initialized)
+	if (!container.has(SERVICE_KEYS.Config)) {
+		container.registerInstance(SERVICE_KEYS.Config, new Config());
+	}
+	if (!container.has(SERVICE_KEYS.Logger)) {
+		container.registerInstance(SERVICE_KEYS.Logger, new Logger("Server"));
+	}
 
 	// Initialize components
 	const config = container.resolve<Config>(SERVICE_KEYS.Config);
@@ -111,21 +115,36 @@ export default function startServer(options?: {
 	if (port !== runtime.port) {
 		runtime.port = port;
 	}
-	DatabaseFactory.initialize(undefined, runtime);
-	const dbOps = DatabaseFactory.getInstance();
+	
+	// Initialize database if not already done
+	let dbOps: any;
+	if (!container.has(SERVICE_KEYS.Database)) {
+		DatabaseFactory.initialize(undefined, runtime);
+		dbOps = DatabaseFactory.getInstance();
+		container.registerInstance(SERVICE_KEYS.Database, dbOps);
+	} else {
+		dbOps = container.resolve(SERVICE_KEYS.Database);
+	}
+	
 	const db = dbOps.getDatabase();
 	const log = container.resolve<Logger>(SERVICE_KEYS.Logger);
-	container.registerInstance(SERVICE_KEYS.Database, dbOps);
 
-	// Initialize async DB writer
-	const asyncWriter = new AsyncDbWriter();
-	container.registerInstance(SERVICE_KEYS.AsyncWriter, asyncWriter);
-	registerDisposable(asyncWriter);
+	// Initialize async DB writer (only if not already done)
+	let asyncWriter: any;
+	if (!container.has(SERVICE_KEYS.AsyncWriter)) {
+		asyncWriter = new AsyncDbWriter();
+		container.registerInstance(SERVICE_KEYS.AsyncWriter, asyncWriter);
+		registerDisposable(asyncWriter);
+	} else {
+		asyncWriter = container.resolve(SERVICE_KEYS.AsyncWriter);
+	}
 
-	// Initialize pricing logger
-	const pricingLogger = new Logger("Pricing");
-	container.registerInstance(SERVICE_KEYS.PricingLogger, pricingLogger);
-	setPricingLogger(pricingLogger);
+	// Initialize pricing logger (only if not already done)
+	if (!container.has(SERVICE_KEYS.PricingLogger)) {
+		const pricingLogger = new Logger("Pricing");
+		container.registerInstance(SERVICE_KEYS.PricingLogger, pricingLogger);
+		setPricingLogger(pricingLogger);
+	}
 
 	const apiRouter = new APIRouter({ db, config, dbOps });
 

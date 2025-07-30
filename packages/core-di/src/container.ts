@@ -13,6 +13,10 @@ class Container {
 		this.services.set(key, instance);
 	}
 
+	has(key: ServiceKey): boolean {
+		return this.services.has(key) || this.factories.has(key);
+	}
+
 	resolve<T>(key: ServiceKey): T {
 		// Check if instance already exists
 		if (this.services.has(key)) {
