@@ -39,78 +39,26 @@ async function main() {
 		const config = new Config();
 		const port = config.getRuntime().port || NETWORK.DEFAULT_PORT;
 
-		// Suppress console output to avoid interfering with Claude
-		const originalConsoleLog = console.log;
-		const originalConsoleError = console.error;
-		const originalConsoleWarn = console.warn;
-		const originalConsoleInfo = console.info;
-		
-		// Only show critical startup message
-		console.log(`🚀 Starting ccflare proxy on port ${port}...`);
-		
-		// Suppress all console output
-		console.log = () => {};
-		console.error = () => {};
-		console.warn = () => {};
-		console.info = () => {};
-
-		// Start server in background (silently)
+		// Start server in background (completely silent)
 		const server = startServer({ port, withDashboard: true, silent: true });
 
-		// Give server time to start
-		await new Promise((resolve) => setTimeout(resolve, 2000));
-		
-		// Verify server is responding
-		try {
-			const testResponse = await fetch(`http://localhost:${port}/api/accounts`);
-			if (!testResponse.ok) {
-				console.error(`❌ Server not responding properly on port ${port}`);
-				process.exit(1);
-			}
-			const accounts = await testResponse.json();
-			if (accounts.length === 0) {
-				console.error(`❌ No accounts configured. Run 'ccflare --add-account' first.`);
-				process.exit(1);
-			}
-			console.log(`✅ Server ready with ${accounts.length} account(s)`);
-		} catch (error) {
-			console.error(`❌ Failed to connect to server on port ${port}:`, error.message);
-			process.exit(1);
-		}
+		// Wait a bit for server to start
+		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		// Restore console for critical messages only
-		console.log = originalConsoleLog;
-		console.error = originalConsoleError;
-		
-		// Launch Claude
+		// Launch Claude with environment variable
 		const { spawn } = await import("node:child_process");
-
 		const claudeArgs = args.slice(1); // Remove "claude" from args
-		
-		// Debug: Show what env vars we're setting
-		console.log(`🔧 Setting proxy environment variables:`);
-		console.log(`   ANTHROPIC_BASE_URL=http://localhost:${port}`);
-		
-		// Ensure environment variables are set for Claude
-		const proxyUrl = `http://localhost:${port}`;
-		const claudeEnv = {
-			...process.env,
-			ANTHROPIC_BASE_URL: proxyUrl,
-			ANTHROPIC_API_BASE: proxyUrl,
-			ANTHROPIC_API_URL: proxyUrl,
-			// Add additional variations that might be checked
-			ANTHROPIC_API_ENDPOINT: proxyUrl,
-			CLAUDE_API_URL: proxyUrl,
-		};
 		
 		const claudeProcess = spawn("claude", claudeArgs, {
 			stdio: "inherit",
-			env: claudeEnv,
+			env: {
+				...process.env,
+				ANTHROPIC_BASE_URL: `http://localhost:${port}`,
+			},
 		});
 
 		// Handle Claude process exit
 		claudeProcess.on("exit", async (code) => {
-			// Silently shut down
 			server.stop();
 			await shutdown();
 			process.exit(code || 0);
@@ -118,7 +66,6 @@ async function main() {
 
 		// Handle interrupt signals
 		const handleSignal = async (signal: string) => {
-			// Silently shut down
 			claudeProcess.kill();
 			server.stop();
 			await shutdown();
