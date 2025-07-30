@@ -1,6 +1,6 @@
 {
   "name": "@chinchillaenterprises/ccflare",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Claude API load balancer - Never hit rate limits again",
   "author": "Chinchilla Enterprises",
   "license": "MIT",

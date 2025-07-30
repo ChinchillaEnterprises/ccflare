@@ -79,7 +79,12 @@ export async function forwardToClient(
 		retryAttempt,
 		failoverAttempts,
 	};
-	ctx.usageWorker.postMessage(startMessage);
+	try {
+		ctx.usageWorker.postMessage(startMessage);
+	} catch (error) {
+		// Worker may be terminated in compiled binary - don't fail the request
+		console.warn("Failed to send start message to worker:", error);
+	}
 
 	/*********************************************************************
 	 *  STREAMING RESPONSES — tee with Response.clone() and send chunks
@@ -102,7 +107,12 @@ export async function forwardToClient(
 							requestId,
 							data: value,
 						};
-						ctx.usageWorker.postMessage(chunkMsg);
+						try {
+							ctx.usageWorker.postMessage(chunkMsg);
+						} catch (error) {
+							// Worker may be terminated - silently continue
+							console.warn("Failed to send chunk message to worker:", error);
+						}
 					}
 				}
 				// Finished without errors
@@ -111,7 +121,12 @@ export async function forwardToClient(
 					requestId,
 					success: isExpectedResponse(path, analyticsClone),
 				};
-				ctx.usageWorker.postMessage(endMsg);
+				try {
+					ctx.usageWorker.postMessage(endMsg);
+				} catch (error) {
+					// Worker may be terminated - silently continue
+					console.warn("Failed to send end message to worker:", error);
+				}
 			} catch (err) {
 				const endMsg: EndMessage = {
 					type: "end",
@@ -119,7 +134,12 @@ export async function forwardToClient(
 					success: false,
 					error: (err as Error).message,
 				};
-				ctx.usageWorker.postMessage(endMsg);
+				try {
+					ctx.usageWorker.postMessage(endMsg);
+				} catch (error) {
+					// Worker may be terminated - silently continue
+					console.warn("Failed to send error end message to worker:", error);
+				}
 			}
 		})();
 
@@ -143,7 +163,12 @@ export async function forwardToClient(
 						: null,
 				success: isExpectedResponse(path, clone),
 			};
-			ctx.usageWorker.postMessage(endMsg);
+			try {
+				ctx.usageWorker.postMessage(endMsg);
+			} catch (error) {
+				// Worker may be terminated - silently continue
+				console.warn("Failed to send non-streaming end message to worker:", error);
+			}
 		} catch (err) {
 			const endMsg: EndMessage = {
 				type: "end",
@@ -151,7 +176,12 @@ export async function forwardToClient(
 				success: false,
 				error: (err as Error).message,
 			};
-			ctx.usageWorker.postMessage(endMsg);
+			try {
+				ctx.usageWorker.postMessage(endMsg);
+			} catch (error) {
+				// Worker may be terminated - silently continue
+				console.warn("Failed to send final error end message to worker:", error);
+			}
 		}
 	})();
 

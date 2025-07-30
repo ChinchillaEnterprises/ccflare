@@ -51,11 +51,21 @@ export function terminateUsageWorker(): void {
 	if (usageWorkerInstance) {
 		// Send shutdown message to allow worker to flush
 		const shutdownMsg: ControlMessage = { type: "shutdown" };
-		usageWorkerInstance.postMessage(shutdownMsg);
+		try {
+			usageWorkerInstance.postMessage(shutdownMsg);
+		} catch (error) {
+			// Worker may already be terminated - continue with cleanup
+			console.warn("Failed to send shutdown message to worker:", error);
+		}
 		// Give worker time to flush before terminating
 		setTimeout(() => {
 			if (usageWorkerInstance) {
-				usageWorkerInstance.terminate();
+				try {
+					usageWorkerInstance.terminate();
+				} catch (error) {
+					// Worker may already be terminated - continue with cleanup
+					console.warn("Failed to terminate worker:", error);
+				}
 				usageWorkerInstance = null;
 			}
 		}, TIMING.WORKER_SHUTDOWN_DELAY);
