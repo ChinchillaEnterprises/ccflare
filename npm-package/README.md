@@ -14,6 +14,10 @@ npm install -g @chinchillaenterprises/ccflare
 # Launch Claude Code with automatic proxy
 ccflare claude
 
+# Or run server separately (more stable):
+# Terminal 1: bun run start
+# Terminal 2: ccflare claude
+
 # Start server only
 ccflare --serve
 

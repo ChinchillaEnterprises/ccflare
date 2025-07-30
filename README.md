@@ -29,11 +29,14 @@ bun install
 # Start ccflare (TUI + Server)
 bun run ccflare
 
-# Option 1: One command to rule them all
-ccflare claude    # Starts server & launches Claude Code with proxy
+# Option 1: One command (auto-starts server if needed)
+ccflare claude    # Checks for server, starts if needed, launches Claude
 
-# Option 2: Manual configuration
-export ANTHROPIC_BASE_URL=http://localhost:8080
+# Option 2: Separate server (recommended for stability)
+# Terminal 1:
+bun run start     # Start server directly
+# Terminal 2:
+export ANTHROPIC_BASE_URL=http://localhost:8080 && claude
 ```
 
 ## Features

@@ -39,11 +39,27 @@ async function main() {
 		const config = new Config();
 		const port = config.getRuntime().port || NETWORK.DEFAULT_PORT;
 
-		// Start server in background (completely silent)
-		const server = startServer({ port, withDashboard: true, silent: true });
-
-		// Wait a bit for server to start
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		// Check if server is already running
+		let serverStarted = false;
+		let server: any = null;
+		
+		try {
+			const testResponse = await fetch(`http://localhost:${port}/api/accounts`);
+			if (testResponse.ok) {
+				// Server is already running
+				console.log(`Using existing ccflare server on port ${port}`);
+			} else {
+				throw new Error("Server not responding");
+			}
+		} catch {
+			// Server not running, start it
+			console.log(`Starting ccflare server on port ${port}...`);
+			console.log(`For best results, run 'bun run start' in a separate terminal`);
+			server = startServer({ port, withDashboard: true, silent: true });
+			serverStarted = true;
+			// Wait for server to start
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+		}
 
 		// Launch Claude with environment variable
 		const { spawn } = await import("node:child_process");
@@ -59,7 +75,9 @@ async function main() {
 
 		// Handle Claude process exit
 		claudeProcess.on("exit", async (code) => {
-			server.stop();
+			if (serverStarted && server) {
+				server.stop();
+			}
 			await shutdown();
 			process.exit(code || 0);
 		});
@@ -67,7 +85,9 @@ async function main() {
 		// Handle interrupt signals
 		const handleSignal = async (signal: string) => {
 			claudeProcess.kill();
-			server.stop();
+			if (serverStarted && server) {
+				server.stop();
+			}
 			await shutdown();
 			process.exit(0);
 		};
@@ -126,7 +146,8 @@ Examples:
 		const config = new Config();
 		const port =
 			parsed.port || config.getRuntime().port || NETWORK.DEFAULT_PORT;
-		startServer({ port, withDashboard: true });
+		const silent = parsed.silent || false;
+		startServer({ port, withDashboard: true, silent });
 		// Keep process alive
 		await new Promise(() => {});
 		return;
