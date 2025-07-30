@@ -83,6 +83,7 @@ let serverInstance: ReturnType<typeof serve> | null = null;
 export default function startServer(options?: {
 	port?: number;
 	withDashboard?: boolean;
+	silent?: boolean;
 }) {
 	// Return existing server if already running
 	if (serverInstance) {
@@ -97,7 +98,7 @@ export default function startServer(options?: {
 		};
 	}
 
-	const { port = NETWORK.DEFAULT_PORT, withDashboard = true } = options || {};
+	const { port = NETWORK.DEFAULT_PORT, withDashboard = true, silent = false } = options || {};
 
 	// Initialize DI container
 	container.registerInstance(SERVICE_KEYS.Config, new Config());
@@ -217,8 +218,10 @@ export default function startServer(options?: {
 		},
 	});
 
-	// Log server startup
-	console.log(`
+	// Only log if not in silent mode
+	if (!silent) {
+		// Log server startup
+		console.log(`
 🎯 ccflare Server v${process.env.npm_package_version || "1.0.0"}
 🌐 Port: ${serverInstance.port}
 📊 Dashboard: ${withDashboard ? `http://localhost:${serverInstance.port}` : "disabled"}
@@ -237,23 +240,24 @@ Available endpoints:
 ⚡ Ready to proxy requests...
 `);
 
-	// Log configuration
-	console.log(
-		`⚙️  Current strategy: ${config.getStrategy()} (default: ${DEFAULT_STRATEGY})`,
-	);
-
-	// Log initial account status
-	const accounts = dbOps.getAllAccounts();
-	const activeAccounts = accounts.filter(
-		(a) => !a.paused && (!a.expires_at || a.expires_at > Date.now()),
-	);
-	log.info(
-		`Loaded ${accounts.length} accounts (${activeAccounts.length} active)`,
-	);
-	if (activeAccounts.length === 0) {
-		log.warn(
-			"No active accounts available - requests will be forwarded without authentication",
+		// Log configuration
+		console.log(
+			`⚙️  Current strategy: ${config.getStrategy()} (default: ${DEFAULT_STRATEGY})`,
 		);
+
+		// Log initial account status
+		const accounts = dbOps.getAllAccounts();
+		const activeAccounts = accounts.filter(
+			(a) => !a.paused && (!a.expires_at || a.expires_at > Date.now()),
+		);
+		log.info(
+			`Loaded ${accounts.length} accounts (${activeAccounts.length} active)`,
+		);
+		if (activeAccounts.length === 0) {
+			log.warn(
+				"No active accounts available - requests will be forwarded without authentication",
+			);
+		}
 	}
 
 	return {

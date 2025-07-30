@@ -1,6 +1,33 @@
 {
-	"private": true,
-	"name": "ccflare",
+	"name": "@chinchillaenterprises/ccflare",
+	"version": "1.0.0",
+	"description": "Claude API load balancer with intelligent routing across multiple accounts",
+	"author": "Chinchilla Enterprises",
+	"license": "MIT",
+	"homepage": "https://github.com/ChinchillaEnterprises/ccflare",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ChinchillaEnterprises/ccflare.git"
+	},
+	"bugs": {
+		"url": "https://github.com/ChinchillaEnterprises/ccflare/issues"
+	},
+	"keywords": [
+		"claude",
+		"anthropic",
+		"api",
+		"proxy",
+		"load-balancer",
+		"rate-limit"
+	],
+	"bin": {
+		"ccflare": "./apps/tui/dist/ccflare"
+	},
+	"files": [
+		"apps/tui/dist/ccflare",
+		"README.md",
+		"LICENSE"
+	],
 	"workspaces": [
 		"apps/*",
 		"packages/*"

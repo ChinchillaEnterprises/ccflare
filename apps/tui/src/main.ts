@@ -39,17 +39,32 @@ async function main() {
 		const config = new Config();
 		const port = config.getRuntime().port || NETWORK.DEFAULT_PORT;
 
-		// Start server in background
-		console.log(`🚀 Starting ccflare server on port ${port}...`);
-		const server = startServer({ port, withDashboard: true });
+		// Suppress console output to avoid interfering with Claude
+		const originalConsoleLog = console.log;
+		const originalConsoleError = console.error;
+		const originalConsoleWarn = console.warn;
+		const originalConsoleInfo = console.info;
+		
+		// Only show critical startup message
+		console.log(`🚀 Starting ccflare proxy on port ${port}...`);
+		
+		// Suppress all console output
+		console.log = () => {};
+		console.error = () => {};
+		console.warn = () => {};
+		console.info = () => {};
+
+		// Start server in background (silently)
+		const server = startServer({ port, withDashboard: true, silent: true });
 
 		// Give server time to start
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		// Set environment variables and launch Claude
-		console.log(
-			`🔗 Launching Claude Code with proxy at http://localhost:${port}`,
-		);
+		// Restore console for critical messages only
+		console.log = originalConsoleLog;
+		console.error = originalConsoleError;
+		
+		// Launch Claude
 		const { spawn } = await import("node:child_process");
 
 		const claudeArgs = args.slice(1); // Remove "claude" from args
@@ -65,7 +80,7 @@ async function main() {
 
 		// Handle Claude process exit
 		claudeProcess.on("exit", async (code) => {
-			console.log(`\n👋 Claude Code exited, shutting down ccflare...`);
+			// Silently shut down
 			server.stop();
 			await shutdown();
 			process.exit(code || 0);
@@ -73,7 +88,7 @@ async function main() {
 
 		// Handle interrupt signals
 		const handleSignal = async (signal: string) => {
-			console.log(`\n👋 Received ${signal}, shutting down...`);
+			// Silently shut down
 			claudeProcess.kill();
 			server.stop();
 			await shutdown();
