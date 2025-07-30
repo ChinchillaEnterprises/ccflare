@@ -58,7 +58,25 @@ async function main() {
 		const server = startServer({ port, withDashboard: true, silent: true });
 
 		// Give server time to start
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+		
+		// Verify server is responding
+		try {
+			const testResponse = await fetch(`http://localhost:${port}/api/accounts`);
+			if (!testResponse.ok) {
+				console.error(`❌ Server not responding properly on port ${port}`);
+				process.exit(1);
+			}
+			const accounts = await testResponse.json();
+			if (accounts.length === 0) {
+				console.error(`❌ No accounts configured. Run 'ccflare --add-account' first.`);
+				process.exit(1);
+			}
+			console.log(`✅ Server ready with ${accounts.length} account(s)`);
+		} catch (error) {
+			console.error(`❌ Failed to connect to server on port ${port}:`, error.message);
+			process.exit(1);
+		}
 
 		// Restore console for critical messages only
 		console.log = originalConsoleLog;
@@ -68,14 +86,26 @@ async function main() {
 		const { spawn } = await import("node:child_process");
 
 		const claudeArgs = args.slice(1); // Remove "claude" from args
+		
+		// Debug: Show what env vars we're setting
+		console.log(`🔧 Setting proxy environment variables:`);
+		console.log(`   ANTHROPIC_BASE_URL=http://localhost:${port}`);
+		
+		// Ensure environment variables are set for Claude
+		const proxyUrl = `http://localhost:${port}`;
+		const claudeEnv = {
+			...process.env,
+			ANTHROPIC_BASE_URL: proxyUrl,
+			ANTHROPIC_API_BASE: proxyUrl,
+			ANTHROPIC_API_URL: proxyUrl,
+			// Add additional variations that might be checked
+			ANTHROPIC_API_ENDPOINT: proxyUrl,
+			CLAUDE_API_URL: proxyUrl,
+		};
+		
 		const claudeProcess = spawn("claude", claudeArgs, {
 			stdio: "inherit",
-			env: {
-				...process.env,
-				ANTHROPIC_BASE_URL: `http://localhost:${port}`,
-				ANTHROPIC_API_BASE: `http://localhost:${port}`,
-				ANTHROPIC_API_URL: `http://localhost:${port}`,
-			},
+			env: claudeEnv,
 		});
 
 		// Handle Claude process exit
