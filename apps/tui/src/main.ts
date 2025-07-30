@@ -33,6 +33,59 @@ async function main() {
 	container.registerInstance(SERVICE_KEYS.Database, dbOps);
 
 	const args = process.argv.slice(2);
+
+	// Handle "ccflare claude" command
+	if (args[0] === "claude") {
+		const config = new Config();
+		const port = config.getRuntime().port || NETWORK.DEFAULT_PORT;
+
+		// Start server in background
+		console.log(`🚀 Starting ccflare server on port ${port}...`);
+		const server = startServer({ port, withDashboard: true });
+
+		// Give server time to start
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+
+		// Set environment variables and launch Claude
+		console.log(
+			`🔗 Launching Claude Code with proxy at http://localhost:${port}`,
+		);
+		const { spawn } = await import("node:child_process");
+
+		const claudeArgs = args.slice(1); // Remove "claude" from args
+		const claudeProcess = spawn("claude", claudeArgs, {
+			stdio: "inherit",
+			env: {
+				...process.env,
+				ANTHROPIC_BASE_URL: `http://localhost:${port}`,
+				ANTHROPIC_API_BASE: `http://localhost:${port}`,
+				ANTHROPIC_API_URL: `http://localhost:${port}`,
+			},
+		});
+
+		// Handle Claude process exit
+		claudeProcess.on("exit", async (code) => {
+			console.log(`\n👋 Claude Code exited, shutting down ccflare...`);
+			server.stop();
+			await shutdown();
+			process.exit(code || 0);
+		});
+
+		// Handle interrupt signals
+		const handleSignal = async (signal: string) => {
+			console.log(`\n👋 Received ${signal}, shutting down...`);
+			claudeProcess.kill();
+			server.stop();
+			await shutdown();
+			process.exit(0);
+		};
+
+		process.on("SIGINT", () => handleSignal("SIGINT"));
+		process.on("SIGTERM", () => handleSignal("SIGTERM"));
+
+		return;
+	}
+
 	const parsed = parseArgs(args);
 
 	// Handle help
@@ -40,7 +93,10 @@ async function main() {
 		console.log(`
 🎯 ccflare - Load Balancer for Claude
 
-Usage: ccflare [options]
+Usage: ccflare [command] [options]
+
+Commands:
+  claude               Start ccflare server and launch Claude Code with proxy
 
 Options:
   --serve              Start API server with dashboard
@@ -63,11 +119,11 @@ Interactive Mode:
   ccflare          Launch interactive TUI (default)
 
 Examples:
+  ccflare claude                 # Start server & launch Claude Code
+  ccflare claude --help          # Pass args to Claude Code
   ccflare                        # Interactive mode
-  ccflare --serve                # Start server
+  ccflare --serve                # Start server only
   ccflare --add-account work     # Add account
-  ccflare --pause work           # Pause account
-  ccflare --analyze              # Run performance analysis
   ccflare --stats                # View stats
 `);
 		process.exit(0);

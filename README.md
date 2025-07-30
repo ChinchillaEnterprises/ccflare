@@ -29,7 +29,10 @@ bun install
 # Start ccflare (TUI + Server)
 bun run ccflare
 
-# Configure Claude SDK
+# Option 1: One command to rule them all
+ccflare claude    # Starts server & launches Claude Code with proxy
+
+# Option 2: Manual configuration
 export ANTHROPIC_BASE_URL=http://localhost:8080
 ```
 
